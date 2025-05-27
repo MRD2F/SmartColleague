@@ -170,11 +170,48 @@ class QueryCollection:
         # Retrieve all documents from the collection
         results = self.doc_collection.get(include=["metadatas"])
 
-        # Extract all 'file_name' fields from metadata
-        file_names = [metadata.get('file_name')+'.pdf' for metadata in results['metadatas']]
+        # Extract all 'document_name' fields from metadata
+        file_names = [metadata.get('document_name')+'.pdf' for metadata in results['metadatas']]
 
         return file_names
 
+    def retrieve_pdf_section(self, collection_name: str, pdf_id: str, page_start: int, page_end: int) -> str:
+        #"description": "Fetches the text from a specific page range or section of a PDF document.",
+        # "parameters": {
+        #  collection_name: "string - identifier of the collection",
+        # "pdf_id": "string - identifier of the PDF file",
+        # "page_start": "integer - first page to retrieve",
+        # "page_end": "integer - last page to retrieve"
+        #}
+        collection = cc.get_create_collection(collection_name)
+        results = collection.get(include=["documents", "metadatas"])
+        
+        target_pages = range(page_start, page_end+1)  # can be a single number or list
+
+        # Apply the filter
+        filtered = [
+            {
+                "id": results["ids"][i],
+                "document": results["documents"][i],
+                "metadata": metadata
+            }
+            for i, metadata in enumerate(results["metadatas"])
+            if metadata.get("document_name") == pdf_id and metadata.get("page_number") in target_pages
+        ]
+        filtered_document = []
+        if filtered:
+            for i in filtered:
+                if i['document']:
+                    filtered_document.append(i['document'])
+                else:
+                    return f"No document found for pages {[i for i in range(target_pages)]} in document '{pdf_id}'."
+
+            filtered_document = " ".join([i for i in filtered_document])
+
+        else:
+            return f"No content found for pages {[i for i in range(target_pages)]} in document '{pdf_id}'."
+
+        return filtered_document
 
 class GenerateContent:
     def __init__(self, instructions_path, tool_list):
@@ -207,9 +244,10 @@ class GenerateContent:
             ),
         )
         display(Markdown(response.text))
+        return response
 
-# instructions_path = '../cofig/genai_instructions.txt'
+# instructions_path = '../config/genai_instructions.txt'
 # GenerateContent(instructions_path, '')
 # db_path='../data/chromaDB'
-# qc = QueryCollection(chroma_db_path=db_path, doc_collection_name="doc_collection_new")
+# qc = QueryCollection(chroma_db_path=db_path, doc_collection_name="doc_collection")
 # print(qc.list_company_documentation())
