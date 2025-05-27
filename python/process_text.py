@@ -74,4 +74,6 @@ class ProcessText:
         chunks.append(chunk)
         return chunks
     
+    def basic_chunk_text(self, text, max_length=500):
+        return textwrap.wrap(text, max_length)
 

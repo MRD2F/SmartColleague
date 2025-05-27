@@ -1,5 +1,5 @@
-import pandas as pd
-import re
+# import pandas as pd
+# import re
 import os
 import chromadb
 from IPython.display import Markdown, display
@@ -13,14 +13,29 @@ import gradio as gr
 from dotenv import load_dotenv
 import os
 
-class ChromaCollection:
-    def __init__(self, chroma_db_path, cv_collection_name, doc_collection_name):
+class pippo:
+    def __init__(self, name):
+        self.name = name
+
+class QueryCollection:
+    def __init__(self, chroma_db_path, doc_collection_name):#cv_collection_name, doc_collection_name):
         self.collection_bd_path = chroma_db_path
-        self.cv_collection_name = cv_collection_name
+        #self.collection_name_list = collection_name_list
+        self.cv_collection_name = 'cv_collection'
         self.doc_collection_name = doc_collection_name
         self.chroma_client = chromadb.PersistentClient(path=chroma_db_path)
-        self.cv_collection = self.chroma_client.get_collection(cv_collection_name)
+        print(self.chroma_client.list_collections())
+        
+        # self.collections = []
+
+        # self.cv_collection = self.chroma_client.get_collection(cv_collection_name)
         self.doc_collection = self.chroma_client.get_collection(doc_collection_name)
+
+    def get_cb_information(self):
+        for col in self.chroma_client.list_collections():
+            print(f"Collection Name: {col.name}")
+            print(f"Number of Documents: {col.count()}")
+            print("-" * 40)
 
     def execute_query(self, cv_collection_name: str, user_query : str) -> dict:
         """Execute a potentially read-only query and return the results."""
@@ -49,6 +64,7 @@ class ChromaCollection:
         prompt = f"Use the following company info to answer the question:\n{context_text}\n\nQuestion: {query}"
 
         return prompt
+    
     def get_results(self, collection_name : str, query : str) -> dict:
         """Finds the most relevant employee CVs based on the query."""
         collection_name = self.cv_collection_name
@@ -86,7 +102,7 @@ class ChromaCollection:
     
     def find_similarities(self, collection_name : str, query : str, n_results : int = 10) -> str:
         """Finds the most relevant CVs based on the query."""
-        collection_name = self.cv_collection_name
+        collection_name = 'cv_collection'
         #n_results= 10
         collection = self.chroma_client.get_collection(name=collection_name)
 
@@ -143,7 +159,7 @@ class ChromaCollection:
         docs_info = {}
         for i in range(len(x['documents'][0])):
             info = x['documents'][0][i]
-            id = x['metadatas'][0][i]['source']
+            id = x['metadatas'][0][i]['file_name']
             docs_info[id] = {
                 'document_content': info, 
                 'document_name' : id
@@ -154,15 +170,15 @@ class ChromaCollection:
         # Retrieve all documents from the collection
         results = self.doc_collection.get(include=["metadatas"])
 
-        # Extract all 'source' fields from metadata
-        sources = [metadata.get('source')+'.pdf' for metadata in results['metadatas']]
+        # Extract all 'file_name' fields from metadata
+        file_names = [metadata.get('file_name')+'.pdf' for metadata in results['metadatas']]
 
-        return sources
+        return file_names
+
 
 class GenerateContent:
     def __init__(self, instructions_path, tool_list):
-        self.client = None
-        self.get_google_client()
+        self.client = self.get_google_client()
         self.instructions_path = instructions_path
         self.instructions = self.load_instructions(instructions_path)
         self.tool_list = tool_list
@@ -191,3 +207,9 @@ class GenerateContent:
             ),
         )
         display(Markdown(response.text))
+
+# instructions_path = '../cofig/genai_instructions.txt'
+# GenerateContent(instructions_path, '')
+# db_path='../data/chromaDB'
+# qc = QueryCollection(chroma_db_path=db_path, doc_collection_name="doc_collection_new")
+# print(qc.list_company_documentation())
